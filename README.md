@@ -18,11 +18,11 @@ See example.qml for an example on how to use it with a Camera.
 You can include the code statically in your project, for example as a 
 git submodule. Use your own fork if you prefer that.
 
-...
+```
 git submodule add https://github.com/oniongarlic/qt5-barcodevideofilter
-...
+```
 
 Then include barcodevideofilter.pri in your project file:
-...
+```
 include(qt5-barcodevideofilter/barcodevideofilter.pri)
-...
+```
