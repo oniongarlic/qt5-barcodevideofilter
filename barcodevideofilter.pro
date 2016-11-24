@@ -9,3 +9,5 @@ HEADERS += src/VideoFrameWrapper.h \
 
 SOURCES += src/VideoFrameWrapper.cpp \
     src/barcodevideofilter.cpp
+
+include(qzxing/QZXing.pri)
