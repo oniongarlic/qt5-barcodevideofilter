@@ -62,6 +62,11 @@ int VideoFrameWrapper::getHeight() const
     return m_height;
 }
 
+QVideoFrame::PixelFormat VideoFrameWrapper::getFormat() const
+{
+    return m_format;
+}
+
 unsigned char *VideoFrameWrapper::getData() const
 {
     return m_data;
