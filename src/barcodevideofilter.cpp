@@ -80,7 +80,8 @@ QVideoFrame BarcodeVideoFilterRunnable::run(QVideoFrame *input, const QVideoSurf
     bool r=m_fhandler->frameToImage(*input);
 
     if (!r && onceonly) {
-        emit m_parent->error("Unknown camera frame format"+m_fhandler->getFormat());
+        // emit m_parent->error("Unknown camera frame format"+m_fhandler->getFormat());
+        emit m_parent->unknownFrameFormat(m_fhandler->getFormat(), m_fhandler->getWidth(), m_fhandler->getHeight());
         onceonly=false;
     }
 

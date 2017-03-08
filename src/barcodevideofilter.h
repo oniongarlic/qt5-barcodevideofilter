@@ -93,6 +93,9 @@ signals:
     void tagFound(QString tag);
     void tagFoundAdvanced(QString tag, int format, QString charSet);
     void error(QString msg);
+
+    void unknownFrameFormat(int format, int width, int height);
+
     void enabledFormatsChanged(uint enabledFormats);
 
     void rotateChanged(bool rotate);
