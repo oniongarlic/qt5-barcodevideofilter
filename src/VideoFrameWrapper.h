@@ -14,15 +14,18 @@ public:
 
     int getWidth() const;
     int getHeight() const;
+    QVideoFrame::PixelFormat getFormat() const;
+
     unsigned char *getData() const;
   
-    bool frameToImage(const QVideoFrame &input);
+    bool frameToImage(const QVideoFrame &input);        
 
 private:
     void updateBuffer(const QVideoFrame &input);
     int m_width;
     int m_height;
-    unsigned char *m_data;    
+    QVideoFrame::PixelFormat m_format;
+    unsigned char *m_data;
 };
 
 #endif //CAMERAIMAGE_H

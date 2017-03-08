@@ -15,6 +15,7 @@
 #include <QtConcurrent/QtConcurrent>
 
 // #define DEBUG_FILTER
+// #define DEBUG_TIME
 
 BarcodeVideoFilter::BarcodeVideoFilter(QAbstractVideoFilter *parent) :
     QAbstractVideoFilter(parent),
@@ -50,6 +51,9 @@ QVideoFrame BarcodeVideoFilterRunnable::run(QVideoFrame *input, const QVideoSurf
 {
     Q_UNUSED(surfaceFormat)
     Q_UNUSED(flags)
+
+    static bool onceonly=true;
+
     if (m_future.isRunning()) {        
         return *input;
     } else if (m_future.isFinished() && m_future.resultCount()>0) {
@@ -63,8 +67,9 @@ QVideoFrame BarcodeVideoFilterRunnable::run(QVideoFrame *input, const QVideoSurf
         qWarning("Frame is not valid?");
         return *input;
     }
-
+#ifdef DEBUG_TIME
     qint64 s=QDateTime::currentMSecsSinceEpoch();
+#endif
     if (!input->map(QAbstractVideoBuffer::ReadOnly)) {
         qWarning("Failed to map frame for reading!");
         return *input;
@@ -72,8 +77,16 @@ QVideoFrame BarcodeVideoFilterRunnable::run(QVideoFrame *input, const QVideoSurf
 
     emit m_parent->decodingStarted();
 
-    m_fhandler->frameToImage(*input);
+    bool r=m_fhandler->frameToImage(*input);
+
+    if (!r && onceonly) {
+        emit m_parent->error("Unknown camera frame format"+m_fhandler->getFormat());
+        onceonly=false;
+    }
+
+#ifdef DEBUG_TIME
     qDebug() << "F2I: " << QDateTime::currentMSecsSinceEpoch()-s;
+#endif
 
     m_future=QtConcurrent::run(m_tp, this, &BarcodeVideoFilterRunnable::scanBarcode, m_fhandler);
 
@@ -83,16 +96,20 @@ QVideoFrame BarcodeVideoFilterRunnable::run(QVideoFrame *input, const QVideoSurf
 }
 
 bool BarcodeVideoFilterRunnable::scanBarcode(VideoFrameWrapper *ciw)
-{    
+{
+#ifdef DEBUG_TIME
     qint64 s=QDateTime::currentMSecsSinceEpoch();
+#endif
+    QString er;
 
 #ifdef DEBUG_FILTER
     qDebug() << "scan-Thread" << QThread::currentThread();
+#endif
+
     if (!ciw) {
         qWarning("Invalid frame");
         return false;
     }
-#endif
 
     const int w=ciw->getWidth();
     const int h=ciw->getHeight();
@@ -120,7 +137,9 @@ bool BarcodeVideoFilterRunnable::scanBarcode(VideoFrameWrapper *ciw)
             res = m_decoder->decode(bitmap, *m_hints);
         }
 
+#ifdef DEBUG_TIME
         qDebug() << "SBC+: " << QDateTime::currentMSecsSinceEpoch()-s;
+#endif
 
         QString string = QString(res->getText()->getText().c_str());
         if (!string.isEmpty() && (string.length() > 0)) {
@@ -134,7 +153,9 @@ bool BarcodeVideoFilterRunnable::scanBarcode(VideoFrameWrapper *ciw)
                 m_barcode=cs;
             }
 
+#ifdef DEBUG_FILTER
             qDebug() << fmt << string;
+#endif
 
             emit m_parent->tagFound(string);
             emit m_parent->tagFoundAdvanced(string, fmt, cs);
@@ -144,16 +165,24 @@ bool BarcodeVideoFilterRunnable::scanBarcode(VideoFrameWrapper *ciw)
     }
     catch(zxing::ReaderException &e) {
 #ifdef DEBUG_FILTER
-        qDebug() << "RE" << e.what();
+        qDebug() << "RE" << e.what();        
 #endif
+        er=e.what();
     }
     catch(zxing::Exception &e)
     {
 #ifdef DEBUG_FILTER
         qDebug() << "E" << e.what();
 #endif
+        er=e.what();
     }
+
+#ifdef DEBUG_TIME
     qDebug() << "SBC-: " << QDateTime::currentMSecsSinceEpoch()-s;
+#endif
+
+    emit m_parent->error(er);
+
     return false;
 }
 

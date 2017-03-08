@@ -25,6 +25,7 @@ VideoFrameWrapper::VideoFrameWrapper(const QVideoFrame &input)
         return;
     }
     qDebug("VFW");
+
     frameToImage(input);
 }
 
@@ -145,11 +146,11 @@ static inline void frameBGR32toGray(const QVideoFrame &input, unsigned char *des
  */
 bool VideoFrameWrapper::frameToImage(const QVideoFrame &input)
 {
-    const int h=input.height();
-    const int w=input.width();
-
     updateBuffer(input);
-    switch (input.pixelFormat()) {
+
+    m_format=input.pixelFormat();
+
+    switch (m_format) {
     case QVideoFrame::Format_UYVY:
     case QVideoFrame::Format_RGB32:
     case QVideoFrame::Format_ARGB32:
