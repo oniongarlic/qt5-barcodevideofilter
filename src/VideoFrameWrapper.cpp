@@ -13,9 +13,20 @@
 VideoFrameWrapper::VideoFrameWrapper() :
     m_width(0),
     m_height(0),
-    m_data(0)
+    m_data(nullptr)
 {    
+    //http://entropymine.com/imageworsener/grayscale/
+    //Gray = 0.2126×Red + 0.7152×Green + 0.0722×Blue
+    for (int i=0;i<256;i++) {
+        m_r[i]=static_cast<uint8_t>(round(0.2126*i));
+        m_g[i]=static_cast<uint8_t>(round(0.7152*i));
+        m_b[i]=static_cast<uint8_t>(round(0.0722*i));
+    }
+}
 
+inline uint8_t VideoFrameWrapper::grey(uint8_t r, uint8_t g, uint8_t b)
+{
+    return m_r[r]+m_g[g]+m_b[b];
 }
 
 VideoFrameWrapper::VideoFrameWrapper(const QVideoFrame &input)
@@ -23,8 +34,7 @@ VideoFrameWrapper::VideoFrameWrapper(const QVideoFrame &input)
     if (!input.isReadable()) {
         qWarning("QVideoFrame input is not readable!");
         return;
-    }
-    qDebug("VFW");
+    }    
 
     frameToImage(input);
 }
@@ -36,10 +46,12 @@ void VideoFrameWrapper::updateBuffer(const QVideoFrame &input)
     w=input.width();
     h=input.height();
 
-    if (w==m_width && h==m_height)
+    if (w==m_width && h==m_height && m_data!=nullptr)
         return;
+
     m_width=w;
     m_height=h;
+
     if (m_data)
         delete m_data;
 
@@ -47,8 +59,7 @@ void VideoFrameWrapper::updateBuffer(const QVideoFrame &input)
 }
 
 VideoFrameWrapper::~VideoFrameWrapper()
-{
-    qDebug("~VFW");
+{    
     delete m_data;
 }
 
@@ -72,20 +83,8 @@ unsigned char *VideoFrameWrapper::getData() const
     return m_data;
 }
 
-// XXX: hmm
-static inline quint8 inExactRGBtoGrayscale(quint8 r, quint8 g, quint8 b)
-{
-    if (r<30 && g<30 && b<30)
-        return 0;
-    else if (r>230 && g>230 && b>230)
-        return 255;
-
-    quint16 tmp=b*32+r*64+g*128;
-    return tmp/256;
-}
-
 #if defined(Q_PROCESSOR_ARM_V7) // && defined(__ARM_NEON__)
-static inline void frameBGR32toGray(const QVideoFrame &input, unsigned char *dest)
+inline void VideoFrameWrapper::frameBGR32toGray(const QVideoFrame &input, unsigned char *dest)
 {
     uchar *src=(uchar *)input.bits();
     int n=input.width()*input.height();
@@ -113,7 +112,7 @@ static inline void frameBGR32toGray(const QVideoFrame &input, unsigned char *des
     }
 }
 #else
-static inline void frameBGR32toGray(const QVideoFrame &input, unsigned char *dest)
+inline void VideoFrameWrapper::frameBGR32toGray(const QVideoFrame &input, unsigned char *dest)
 {
     const uchar*bits=input.bits();
     const int w=input.width();
@@ -130,11 +129,7 @@ static inline void frameBGR32toGray(const QVideoFrame &input, unsigned char *des
             const quint8 g = (c & 0x00FF0000) >> 16;
             const quint8 r = (c & 0x0000FF00) >> 8;
 
-#if 0
-            dest[ys+x]=qGray(r,g,b);
-#else
-            dest[ys+x]=inExactRGBtoGrayscale(r,g,b);
-#endif
+            dest[ys+x]=grey(r,g,b);
         }
     }
 }
@@ -154,6 +149,7 @@ bool VideoFrameWrapper::frameToImage(const QVideoFrame &input)
     updateBuffer(input);
 
     m_format=input.pixelFormat();
+    // qDebug() << "Frame format: " << input.pixelFormat();
 
     switch (m_format) {
     case QVideoFrame::Format_UYVY:
@@ -168,13 +164,13 @@ bool VideoFrameWrapper::frameToImage(const QVideoFrame &input)
         {
             for(int x=0;x<input.width();x++)
             {
-                m_data[y*m_width+x]=qGray(image.pixel(x,y));
+                QRgb p=image.pixel(x,y);
+                m_data[y*m_width+x]=grey(qRed(p), qGreen(p), qBlue(p));
             }
         }
 
         return true;
     }
-        break;
     case QVideoFrame::Format_BGR32: {
         frameBGR32toGray(input, m_data);
         return true;
@@ -182,7 +178,7 @@ bool VideoFrameWrapper::frameToImage(const QVideoFrame &input)
     case QVideoFrame::Format_NV12:
     case QVideoFrame::Format_NV21:
     case QVideoFrame::Format_YUV420P: {
-        const uchar*bits=input.bits();
+        const uchar* bits=input.bits();
 #if 1
         memcpy(m_data, bits, input.height()*input.width());
 #else
@@ -196,8 +192,7 @@ bool VideoFrameWrapper::frameToImage(const QVideoFrame &input)
         }
 #endif
         return true;
-    }
-        break;
+    }        
     default:;
         qWarning() << "Unhandled VideoFrame format: " << input.pixelFormat();
     }
