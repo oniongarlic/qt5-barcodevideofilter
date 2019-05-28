@@ -324,7 +324,7 @@ QString QZXing::decodeSubImageQML(const QUrl &imageUrl,
     } else {
         qWarning() << "Unhandled image url protocol " << proto;
         emit decodingFinished(false);
-        return false;
+        return "";
     }
 
     if(!(offsetX == 0 && offsetY == 0 && width == 0 && height == 0)) {
