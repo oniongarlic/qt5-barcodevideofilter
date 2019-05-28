@@ -10,6 +10,8 @@
 #include <arm_neon.h>
 #endif
 
+#include <cmath>
+
 VideoFrameWrapper::VideoFrameWrapper() :
     m_width(0),
     m_height(0),
