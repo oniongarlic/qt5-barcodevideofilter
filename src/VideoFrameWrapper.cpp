@@ -173,6 +173,7 @@ bool VideoFrameWrapper::frameToImage(const QVideoFrame &input)
 
         return true;
     }
+    case QVideoFrame::Format_ABGR32:
     case QVideoFrame::Format_BGR32: {
         frameBGR32toGray(input, m_data);
         return true;
