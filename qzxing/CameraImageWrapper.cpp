@@ -124,7 +124,7 @@ ArrayRef<char> CameraImageWrapper::getMatrix() const
 	ArrayRef<char> arr = ArrayRef<char>(matrix, width*height);
 
     if (matrix) {
-        delete matrix;
+        delete[] matrix;
     }
 
     return arr;
